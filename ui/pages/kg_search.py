@@ -162,9 +162,11 @@ def render_kg_search_section(ctx: UIContext) -> None:
     if not res:
         overview = build_overview_graph(kg, limit_nodes=40)
         nb: dict = {}
-        for n in (overview.get("nodes") or [])[:12]:
+        # Build neighbors for EVERY overview node — otherwise clicking a node
+        # with no entry silently does nothing (the "không click node được" bug).
+        for n in overview.get("nodes") or []:
             nid = n.get("id")
-            if nid:
+            if nid and nid not in nb:
                 nb[nid] = neighbors_vis(kg, nid, limit=20)
         empty_payload = {
             "results": [],
