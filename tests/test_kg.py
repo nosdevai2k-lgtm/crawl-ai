@@ -12,7 +12,7 @@ from src.kg.extract import extract_from_document
 from src.kg.indexer import index_document_kg, rebuild_kg_from_store
 from src.kg.scenes import scenes_from_key_facts
 from src.kg.search import structured_search
-from src.kg.unified_search import unified_search
+from src.kg.unified_search import unified_search, _dedupe_merged
 from src.kg.storage import KGStorage
 from src.storage import Storage
 
@@ -113,6 +113,37 @@ def test_unified_search_merges(tmp_path: Path, kg_db: Path) -> None:
     res = unified_search(kg_db, entities="Hạ Long", topics="du lịch", top_k=10, storage=store)
     assert res["count"] >= 1
     assert res.get("graph") is not None
+
+
+def test_dedupe_merged_collapses_cross_source() -> None:
+    # Same article from local KG, document_index and video_kg -> one card.
+    results = [
+        {"_source": "local", "kind": "document", "doc_id": "d1", "source_id": "s1",
+         "title": "Hạ Long", "score": 9},
+        {"_source": "document_index", "kind": "document", "source_id": "s1",
+         "title": "Hạ Long", "score": 7},
+        {"_source": "video_kg", "kind": "document", "doc_id": "d1",
+         "title": "Hạ Long", "score": 5},
+        # a scene of the same doc collapses into the document card
+        {"_source": "local", "kind": "scene", "doc_id": "d1", "title": "Hạ Long",
+         "time": "1:20", "score": 4},
+        # a different article stays
+        {"_source": "local", "kind": "document", "doc_id": "d2", "title": "Đà Nẵng",
+         "score": 3},
+        # an image of d1 is kept (separate media)
+        {"_source": "image_index", "kind": "image", "path": "/img/halong_01.jpg",
+         "score": 2},
+    ]
+    out = _dedupe_merged(results)
+    kinds = [(r.get("kind"), r.get("doc_id") or r.get("source_id") or r.get("path")) for r in out]
+    assert ("document", "d1") in kinds          # kept once (highest score)
+    assert ("document", "d2") in kinds          # different article kept
+    assert ("image", "/img/halong_01.jpg") in kinds  # image kept separately
+    # only ONE document/scene/video card for d1
+    doc_d1 = [r for r in out if (r.get("doc_id") or r.get("source_id")) in ("d1", "s1")
+              and r.get("kind") in ("document", "scene", "video")]
+    assert len(doc_d1) == 1
+    assert doc_d1[0]["score"] == 9              # highest-scoring survivor
 
 
 def test_rebuild_from_store(tmp_path: Path, kg_db: Path) -> None:

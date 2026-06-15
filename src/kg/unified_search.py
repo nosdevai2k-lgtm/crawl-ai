@@ -52,19 +52,68 @@ def _local_to_card(it: dict[str, Any]) -> dict[str, Any]:
     return card
 
 
+def _norm_title(s: Any) -> str:
+    """Lowercase + collapse whitespace so titles that differ only in spacing/case
+    collapse together for dedup."""
+    return " ".join(str(s or "").lower().split())
+
+
+def _content_keys(it: dict[str, Any]) -> set[str]:
+    """All source-independent identifiers for a result. The same article from
+    local KG (has doc_id+source_id), document_index (source_id only) and video_kg
+    must collapse, so we match on ANY shared identifier rather than `_source`."""
+    kind = it.get("display_kind") or it.get("kind") or ""
+    if kind == "image":
+        # Collapse to ONE representative per folder/entity (e.g. one photo per
+        # person), not per file — a mixed result list shouldn't show 10 near
+        # identical portraits of the same person.
+        ref = it.get("path") or it.get("media_ref") or ""
+        p = Path(str(ref))
+        folder = p.parent.name if p.parent.name not in ("", ".", "images") else ""
+        base = folder or _norm_title(it.get("title") or it.get("video_name")) or p.name.lower()
+        return {"img:" + base}
+    keys: set[str] = set()
+    if it.get("doc_id"):
+        keys.add(f"doc:{it['doc_id']}")
+    if it.get("source_id"):
+        keys.add(f"src:{it['source_id']}")
+    title = _norm_title(it.get("video_name") or it.get("title"))
+    if title:
+        keys.add(f"ttl:{title}")
+    if not keys and it.get("media_ref"):
+        keys.add(f"ref:{it['media_ref']}")
+    return keys or {"unknown"}
+
+
 def _dedupe_merged(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Collapse duplicates regardless of which source produced them.
+
+    Results arrive sorted by score (desc), so the first time we see a piece of
+    content we keep the highest-scoring card. Two rules:
+      * same identifier + same kind + same scene-time  -> exact duplicate
+      * a doc that already appeared as a document/scene/video card is not shown
+        again under another of those kinds (keeps one "best" card per article);
+        images stay separate so a doc and its photos can both surface.
+    """
     seen: set[str] = set()
+    seen_doc: set[str] = set()
     out: list[dict[str, Any]] = []
     for it in results:
-        key = "|".join([
-            str(it.get("_source", "")),
-            str(it.get("kind", "")),
-            str(it.get("doc_id") or it.get("path") or it.get("video_name") or it.get("title") or ""),
-            str(it.get("time") or ""),
-        ])
-        if key in seen:
+        kind = it.get("display_kind") or it.get("kind") or ""
+        kind = "document" if kind in ("doc", "document") else kind
+        keys = _content_keys(it)
+        time_s = str(it.get("time") or "")
+        exact = {f"{k}|{kind}|{time_s}" for k in keys}
+        if exact & seen:
             continue
-        seen.add(key)
+        is_doc = kind in ("document", "scene", "video") and any(
+            k.startswith(("doc:", "src:", "ttl:")) for k in keys
+        )
+        if is_doc and (keys & seen_doc):
+            continue
+        if is_doc:
+            seen_doc |= keys
+        seen |= exact
         out.append(it)
     return out
 
@@ -141,6 +190,7 @@ def unified_search(
                 merged.append({
                     "kind": "document",
                     "display_kind": "document",
+                    "source_id": it.get("source_id"),
                     "video_name": it.get("title") or it.get("source_id"),
                     "title": it.get("title") or it.get("source_id"),
                     "date": it.get("date", ""),
