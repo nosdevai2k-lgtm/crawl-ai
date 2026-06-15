@@ -37,8 +37,13 @@ def render_batch_section(ctx: UIContext) -> None:
         st.info("File config không có nguồn nào.")
         return
 
+    # Ưu tiên nguồn chính thống/uy tín chạy trước.
+    from src.source_trust import effective_priority, sort_sources
+
+    sources = sort_sources(sources)
     preview = [
-        {"id": s.id, "type": s.type, "schedule": s.schedule_cron}
+        {"id": s.id, "type": s.type, "schedule": s.schedule_cron,
+         "priority": effective_priority(s)}
         for s in sources
     ]
     st.dataframe(preview, use_container_width=True, hide_index=True)

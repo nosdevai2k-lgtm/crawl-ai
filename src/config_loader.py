@@ -49,6 +49,9 @@ class SourceConfig:
     # theo link trên trang (gồm khác domain) để crawl thêm text + ảnh
     expand_links: bool = False
     expand_max: int = 5
+    # độ ưu tiên nguồn: cao hơn chạy trước (nguồn chính thống nên đặt cao).
+    # None = tự suy ra từ độ tin cậy domain (source_trust).
+    priority: int | None = None
 
 
 def _parse_js_code(raw: Any) -> list[str] | None:
@@ -100,6 +103,7 @@ def _source_config_from_item(item: dict[str, Any], *, validate_id: bool = True) 
         crawl_images=bool(item.get("crawl_images") or False),
         expand_links=bool(item.get("expand_links") or False),
         expand_max=int(item.get("expand_max") or 5),
+        priority=(int(item["priority"]) if item.get("priority") is not None else None),
     )
 
 
@@ -125,6 +129,8 @@ def source_config_as_dict(s: SourceConfig) -> dict[str, Any]:
         "expand_links": s.expand_links,
         "expand_max": s.expand_max,
     }
+    if s.priority is not None:
+        d["priority"] = s.priority
     if s.js_code:
         d["js_code"] = list(s.js_code)
     return d

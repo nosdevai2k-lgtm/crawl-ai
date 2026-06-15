@@ -162,11 +162,17 @@ def search_to_text(query: str, *, max_results: int) -> str:
                 f"(search error: {type(exc).__name__}: {exc})\n"
                 "Gợi ý: thử lại sau, đổi mạng/VPN, hoặc dùng URL/RSS trực tiếp thay vì Search."
             )
+    # Ưu tiên nguồn chính thống/uy tín: xếp hạng lại theo trust, bỏ domain spam.
+    from .source_trust import rank_search_results
+
+    results = rank_search_results(results, url_key="href", drop_blocked=True)
     for r in results:
         title = r.get("title", "")
         href = r.get("href", "")
         body = r.get("body", "")
-        lines.append(f"{title}\n{href}\n{body}\n")
+        tier = r.get("_tier", "neutral")
+        tag = f"[{tier}] " if tier in ("official", "press", "reference") else ""
+        lines.append(f"{tag}{title}\n{href}\n{body}\n")
     if not lines:
         return (
             "(no search results — DuckDuckGo/Bing trả về rỗng trong môi trường này. "

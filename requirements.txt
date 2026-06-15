@@ -16,3 +16,6 @@ pyarrow==24.0.0
 playwright==1.59.0
 python-docx==1.2.0
 yt-dlp==2026.3.17
+# Face detection + embeddings (YuNet + SFace via OpenCV DNN; no compile needed).
+# Optional: face features degrade gracefully if this is absent.
+opencv-python-headless==4.13.0.92

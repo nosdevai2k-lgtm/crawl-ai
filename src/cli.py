@@ -64,6 +64,11 @@ def run_once_cmd(
     if not targets:
         typer.echo(f"Không tìm thấy nguồn: {source}", err=True)
         raise typer.Exit(code=1)
+    if all_sources:
+        # Nguồn ưu tiên cao (chính thống) chạy trước.
+        from .source_trust import sort_sources
+
+        targets = sort_sources(targets)
     for s in targets:
         res = run_source(s, storage, settings, client)
         if res.changed:
