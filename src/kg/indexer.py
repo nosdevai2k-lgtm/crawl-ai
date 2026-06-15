@@ -56,9 +56,15 @@ def index_document_kg(
     # cross-link locations <-> events in same doc
     locs = [e.id for e in extracted.entities if e.label == "Location"]
     evs = [e.id for e in extracted.entities if e.label in ("Event", "Festival")]
+    persons = [e.id for e in extracted.entities if e.label == "Person"]
     for lid in locs:
         for eid in evs:
             kg.add_edge(eid, lid, "LOCATED_IN", weight=0.5)
+    # link people to events/festivals they co-occur with in the same document,
+    # so "which event is this person related to" is a real graph relationship.
+    for pid in persons:
+        for eid in evs:
+            kg.add_edge(pid, eid, "ATTENDED", weight=0.6)
 
     media_count = 0
     for m in extracted.media:

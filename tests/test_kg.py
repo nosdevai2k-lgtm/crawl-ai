@@ -146,6 +146,49 @@ def test_dedupe_merged_collapses_cross_source() -> None:
     assert doc_d1[0]["score"] == 9              # highest-scoring survivor
 
 
+def test_person_event_and_face_links(tmp_path: Path, kg_db: Path) -> None:
+    from src.kg.faces_link import link_faces_to_persons
+
+    structured = {
+        "title": "Tô Lâm dự Lễ hội Hạ Long",
+        "summary": "Tổng Bí thư Tô Lâm dự khai mạc lễ hội tại Hạ Long.",
+        "persons": [{"full_name": "Tô Lâm"}],
+        "festivals_mentioned": ["Lễ hội Hạ Long"],
+        "locations_mentioned": ["Hạ Long"],
+    }
+    index_document_kg(kg_db, "d1", "src1", structured, {})
+    kg = KGStorage(kg_db)
+    with kg._connect() as c:  # noqa: SLF001
+        att = c.execute("SELECT src_id, dst_id FROM kg_edges WHERE rel_type='ATTENDED'").fetchall()
+    assert att, "expected a Person->Event ATTENDED edge"
+
+    # harvest folder for Tô Lâm -> HAS_FACE edge to the SAME person node
+    root = tmp_path / "images"
+    (root / "human" / "to-lam").mkdir(parents=True)
+    (root / "human" / "to-lam" / "to-lam_001.jpg").write_bytes(b"\xff\xd8\xff\x00fakejpeg")
+    (root / "names.json").write_text(
+        json.dumps({"human/to-lam": "Tô Lâm To Lam"}, ensure_ascii=False), encoding="utf-8"
+    )
+    res = link_faces_to_persons(kg_db, images_root=root)
+    assert res["linked"] == 1
+
+    # the person who attended the event must also reach a faceset
+    person_id = att[0]["src_id"]
+    nb = kg.neighbors(person_id, limit=40)
+    labels = {(n.get("label"), n.get("kind") or (n.get("props") or {}).get("kind")) for n in nb.get("nodes") or []}
+    kinds = {n.get("name", "") for n in nb.get("nodes") or []}
+    has_face = any(str(n.get("id", "")).startswith("faceset:") for n in nb.get("nodes") or [])
+    assert has_face, f"person should reach a faceset; got {kinds}"
+
+
+def test_face_primary_name_recovers_vietnamese() -> None:
+    from src.kg.faces_link import _primary_name
+
+    assert _primary_name("Tô Lâm To Lam") == "Tô Lâm"
+    assert _primary_name("Phạm Minh Chính Pham Minh Chinh") == "Phạm Minh Chính"
+    assert _primary_name("Barack Obama") == "Barack Obama"  # pure ascii kept whole
+
+
 def test_rebuild_from_store(tmp_path: Path, kg_db: Path) -> None:
     store = Storage(kg_db)
     store.insert_document(

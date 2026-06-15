@@ -253,6 +253,24 @@ def harvest_faces_cmd(
     )
 
 
+@app.command("link-faces")
+def link_faces_cmd(
+    config: Optional[Path] = typer.Option(None, "--config", "-c"),
+    images_root: Optional[Path] = typer.Option(None, "--images", help="Thư mục ảnh (mặc định data/images)"),
+) -> None:
+    """Nối các thư mục khuôn mặt (data/images/human/<slug>) với node Person trong KG."""
+    from .kg.faces_link import link_faces_to_persons
+    from .settings import load_settings
+
+    settings = load_settings()
+    root = images_root or Path("data/images")
+    res = link_faces_to_persons(settings.database_path, images_root=root)
+    typer.echo(
+        f"Đã nối {res['linked']} face-set ({res['folders']} thư mục, "
+        f"tạo mới {res['created']} Person) vào KG."
+    )
+
+
 @app.command("deep-crawl")
 def deep_crawl_cmd(
     url: str = typer.Argument(..., help="Start URL for deep crawl"),

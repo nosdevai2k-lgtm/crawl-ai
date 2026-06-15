@@ -140,9 +140,15 @@ def render_kg_search_section(ctx: UIContext) -> None:
     with bc2:
         if st.button("♻ Rebuild KG", use_container_width=True, key="kg_rebuild"):
             if storage:
+                from pathlib import Path as _P
+                from src.kg.faces_link import link_faces_to_persons
                 with st.spinner("Rebuild…"):
                     r = rebuild_kg_from_store(db_path, storage)
-                st.success(f"{r['docs']} docs · {r['entities']} entities · {r['media']} media")
+                    f = link_faces_to_persons(db_path, images_root=_P("data/images"))
+                st.success(
+                    f"{r['docs']} docs · {r['entities']} entities · {r['media']} media "
+                    f"· {f['linked']} face-sets linked"
+                )
     with bc3:
         st.caption("Preset ảnh tự chọn theo entity: 👤 nhân vật · 📍 địa điểm · 🎌 sự kiện · 🏞️ phong cảnh")
 
