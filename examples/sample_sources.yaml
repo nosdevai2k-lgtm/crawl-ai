@@ -1,0 +1,28 @@
+# Mẫu nguồn — copy vào config.yaml (mục sources:)
+
+sources:
+  - id: example_home
+    type: url
+    url: https://example.com/
+    schedule_cron: "0 * * * *"
+    extract: article
+
+  - id: python_json_docs
+    type: url
+    url: https://docs.python.org/3/library/json.html
+    schedule_cron: "0 12 * * *"
+    extract: article
+
+  # Wikipedia: chỉ nên dùng sau khi đặt USER_AGENT trong .env theo docs/CRAWL.md
+  - id: wiki_ga_vi
+    type: url
+    url: https://vi.wikipedia.org/wiki/G%C3%A0
+    schedule_cron: "0 8 * * *"
+    extract: article
+
+  - id: bbc_news_rss
+    type: rss
+    url: https://feeds.bbci.co.uk/news/rss.xml
+    schedule_cron: "*/30 * * * *"
+    extract: article
+    rss_max_entries: 12

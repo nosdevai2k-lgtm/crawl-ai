@@ -1,0 +1,21 @@
+# Danh sách nguồn. schedule_cron: phút giờ ngày tháng thứ (cron 5 trường)
+sources:
+  - id: example_static
+    type: url
+    url: https://example.com/
+    schedule_cron: "0 * * * *"
+    extract: article
+
+  - id: bbc_top_stories
+    type: rss
+    url: https://feeds.bbci.co.uk/news/rss.xml
+    schedule_cron: "*/30 * * * *"
+    extract: article
+    rss_max_entries: 15
+
+  - id: search_python_news
+    type: search
+    query: "Python programming news"
+    max_results: 5
+    schedule_cron: "0 9 * * *"
+    extract: raw

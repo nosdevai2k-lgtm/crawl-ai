@@ -1,0 +1,47 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Secrets & local env
+.env
+.env.llm_api
+!.env.example
+!.env.llm_api.example
+
+# Runtime data (large / machine-specific)
+data/crawl.db
+data/crawl.db-*
+data/images/
+data/videos/
+data/**/export/
+data/**/images/
+data/apikey.txt
+data/*.db
+data/*.parquet
+data/test*
+logs/
+*.log
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Temp / diagnostics
+_make_zip.py
+_run_report.py
+_diag_search.py
+data/test_report_latest.json
+data/search_diag_report.json
+data/_dbg.json
+
+# Node (gsap-skills)
+node_modules/
+gsap-skills/node_modules/

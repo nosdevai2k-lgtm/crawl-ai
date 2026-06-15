@@ -1,0 +1,31 @@
+# Crawl danh sách đại biểu Quốc hội từ dbqh.quochoi.vn
+# Trang ASP.NET — cần browser rendering (Playwright).
+#
+# Cài đặt:
+#   pip install playwright && playwright install chromium
+#
+# Chạy:
+#   python scripts/research_auto_crawl.py --config config.dbqh_quochoi.example.yaml --once
+#
+# Lưu ý: Trang dùng URL-based pagination (dbqh_p_0, dbqh_p_1, ..., dbqh_p_49)
+# và khóa QH qua URL path. Config dưới crawl khóa XV (mới nhất).
+
+sources:
+  # Khóa XV - trang 1 (mặc định, hiển thị tất cả đại biểu khóa hiện tại)
+  - id: dbqh_khoa_xv
+    type: browser
+    url: https://dbqh.quochoi.vn/dbqh/ABC/all/type/0/Default.aspx
+    schedule_cron: "0 6 * * 1"
+    extract: raw
+    wait_selector: "#list"
+    next_button_selector: "ul.paging a:not(.active):not(.first):not(.last)"
+    max_pages: 50
+
+  # Khóa XIV
+  - id: dbqh_khoa_xiv
+    type: browser
+    url: https://dbqh.quochoi.vn/dbqh/ABC/all/type/0/Default.aspx
+    schedule_cron: "0 6 1 * *"
+    extract: raw
+    wait_selector: "#list"
+    max_pages: 1

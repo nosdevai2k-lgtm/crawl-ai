@@ -1,0 +1,28 @@
+*{box-sizing:border-box}
+.vkg-root{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0f1115;color:#e6e6e6;display:flex;flex-direction:column;border-radius:10px;overflow:hidden;border:1px solid #2a2f3a}
+.vkg-root header{padding:10px 16px;background:#171a21;border-bottom:1px solid #2a2f3a}
+.vkg-root .top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.vkg-root h1{font-size:15px;margin:0;font-weight:600;white-space:nowrap}
+.vkg-root .samples{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
+.vkg-root .chip{padding:4px 10px;background:#1d2230;border:1px solid #2f3646;border-radius:13px;font-size:12px;cursor:default;color:#cdd6e4}
+.vkg-root #stats{font-size:11px;color:#7c8696;margin-left:6px;white-space:nowrap}
+.vkg-root .intent{font-size:12px;color:#9aa4b2;background:#171a21;border:1px solid #262c38;border-radius:7px;padding:8px 10px;margin-bottom:10px}
+.vkg-root .intent b{color:#cdd6e4}
+.vkg-root .tag{display:inline-block;background:#222a3a;border-radius:10px;padding:1px 8px;margin:2px 3px 0 0;font-size:11px}
+.vkg-root .wrap{flex:1;display:flex;min-height:520px}
+.vkg-root .side{width:380px;background:#13161c;border-right:1px solid #2a2f3a;overflow:auto;padding:12px;flex:none}
+.vkg-root .card{background:#171a21;border:1px solid #262c38;border-radius:8px;padding:9px 11px;margin-bottom:8px;font-size:13px}
+.vkg-root .card .h{font-weight:600;color:#dfe6f2;margin-bottom:3px}
+.vkg-root .card .ev{color:#8a93a3;font-size:12px;font-style:italic;margin-top:4px;border-left:2px solid #2f3646;padding-left:7px}
+.vkg-root .meta{color:#6b7280;font-size:11px;margin-top:3px}
+.vkg-root .rel{color:#f4c542}
+.vkg-root #net{flex:1;background:#0f1115;min-height:520px}
+.vkg-root .legend{display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:#9aa4b2;margin-top:6px}
+.vkg-root .legend span{display:flex;align-items:center;gap:4px}
+.vkg-root .dot{width:9px;height:9px;border-radius:50%;flex:none}
+.vkg-root .empty{color:#6b7280;font-size:13px;padding:20px 4px}
+.vkg-root .understood{font-size:12px;color:#7fd17f;background:#13231a;border:1px solid #265c3a;border-radius:6px;padding:5px 9px;margin-bottom:7px}
+.vkg-root .notrecog{font-size:12px;color:#f0b25a;background:#241c0e;border:1px solid #5c4626;border-radius:6px;padding:5px 9px;margin-bottom:7px}
+.vkg-root .lbltag{font-size:10px;color:#9aa4b2;background:#1d2230;border:1px solid #38415a;border-radius:4px;padding:0 5px;margin-left:3px}
+.vkg-root .srcbadge{font-size:10px;color:#9aa4b2;border:1px solid #38415a;border-radius:4px;padding:0 5px;margin-right:4px}
+.vkg-root .imgthumb{max-width:100%;border-radius:6px;margin-top:6px;max-height:140px;object-fit:cover}

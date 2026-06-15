@@ -1,0 +1,23 @@
+# Mẫu "đọc báo / gom dữ liệu nghiên cứu" — sao chép thành file riêng rồi chỉnh URL/query.
+# schedule_cron: phút giờ ngày tháng thứ (5 trường). Giữ tần suất vừa phải (robots / TOS).
+
+sources:
+  - id: digest_bbc_world
+    type: rss
+    url: https://feeds.bbci.co.uk/news/world/rss.xml
+    schedule_cron: "*/45 * * * *"
+    extract: article
+    rss_max_entries: 12
+
+  - id: digest_python_release
+    type: url
+    url: https://www.python.org/downloads/
+    schedule_cron: "15 */6 * * *"
+    extract: article
+
+  - id: digest_search_ai
+    type: search
+    query: "large language model safety regulation news"
+    max_results: 6
+    schedule_cron: "0 8,20 * * *"
+    extract: raw
