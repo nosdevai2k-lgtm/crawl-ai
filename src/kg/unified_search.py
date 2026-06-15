@@ -63,20 +63,19 @@ def _content_keys(it: dict[str, Any]) -> set[str]:
     local KG (has doc_id+source_id), document_index (source_id only) and video_kg
     must collapse, so we match on ANY shared identifier rather than `_source`."""
     kind = it.get("display_kind") or it.get("kind") or ""
-    if kind == "image":
-        # Collapse to ONE representative per folder/entity (e.g. one photo per
-        # person), not per file — a mixed result list shouldn't show 10 near
-        # identical portraits of the same person.
-        ref = it.get("path") or it.get("media_ref") or ""
-        p = Path(str(ref))
-        folder = p.parent.name if p.parent.name not in ("", ".", "images") else ""
-        base = folder or _norm_title(it.get("title") or it.get("video_name")) or p.name.lower()
-        return {"img:" + base}
     keys: set[str] = set()
     if it.get("doc_id"):
         keys.add(f"doc:{it['doc_id']}")
     if it.get("source_id"):
         keys.add(f"src:{it['source_id']}")
+    if kind == "image" and not keys:
+        # Standalone photo from an image folder (no document behind it): collapse
+        # to ONE representative per folder/entity, not per file.
+        ref = it.get("path") or it.get("media_ref") or ""
+        p = Path(str(ref))
+        folder = p.parent.name if p.parent.name not in ("", ".", "images") else ""
+        base = folder or _norm_title(it.get("title") or it.get("video_name")) or p.name.lower()
+        return {"img:" + base}
     title = _norm_title(it.get("video_name") or it.get("title"))
     if title:
         keys.add(f"ttl:{title}")
@@ -106,9 +105,15 @@ def _dedupe_merged(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
         exact = {f"{k}|{kind}|{time_s}" for k in keys}
         if exact & seen:
             continue
-        is_doc = kind in ("document", "scene", "video") and any(
-            k.startswith(("doc:", "src:", "ttl:")) for k in keys
-        )
+        # One card per underlying document: a doc shown as a document/scene/video
+        # also suppresses its OWN extracted images (kind=image WITH a doc/source
+        # id) — otherwise the same article repeats as a scene AND a photo. Only
+        # standalone folder images (img: keys) stay separate.
+        has_doc_identity = any(k.startswith(("doc:", "src:")) for k in keys)
+        is_doc = (
+            kind in ("document", "scene", "video")
+            or (kind == "image" and has_doc_identity)
+        ) and any(k.startswith(("doc:", "src:", "ttl:")) for k in keys)
         if is_doc and (keys & seen_doc):
             continue
         if is_doc:

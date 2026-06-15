@@ -268,7 +268,10 @@ class TestPipeline:
     def test_dedup_same_content(self, settings, storage):
         """Same content should not create duplicate records."""
         src = quick_url_source("https://example.com")
-        payload = SourcePayload(text="same content", meta={"format": "test"})
+        payload = SourcePayload(
+            text="Nội dung giống nhau, đủ dài để vượt ngưỡng tối thiểu khi kiểm thử dedup.",
+            meta={"format": "test"},
+        )
         res1 = run_source(src, storage, settings, None, cached_payload=payload)
         assert res1.changed is True
         res2 = run_source(src, storage, settings, None, cached_payload=payload)

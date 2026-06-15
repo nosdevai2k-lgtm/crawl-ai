@@ -196,7 +196,10 @@ class TestPipeline:
 
     def test_dedup(self, settings, storage):
         src = quick_url_source("https://x.com")
-        pay = SourcePayload(text="same", meta={"format": "test"})
+        pay = SourcePayload(
+            text="Nội dung bài viết đủ dài để vượt ngưỡng tối thiểu, dùng cho kiểm thử dedup.",
+            meta={"format": "test"},
+        )
         r1 = run_source(src, storage, settings, None, cached_payload=pay)
         r2 = run_source(src, storage, settings, None, cached_payload=pay)
         assert r1.changed is True

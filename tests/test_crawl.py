@@ -252,7 +252,7 @@ def test_run_source_skip_llm_inserts(tmp_path: Path) -> None:
         url="https://example.com",
     )
     fake_payload = SourcePayload(
-        text="  Unique body  ",
+        text="Unique body. " * 8 + "Nội dung bài viết thử nghiệm đủ dài để không bị coi là rác.",
         meta={"ok": True},
         etag='W/"t1"',
         last_modified=None,
@@ -323,6 +323,18 @@ def test_is_junk_payload_blockwall() -> None:
     assert not _is_junk_payload(SourcePayload(text=long_article, meta={"status": 200}))
 
 
+def test_is_junk_payload_too_short_and_boilerplate() -> None:
+    from src.pipeline import _is_junk_payload
+
+    # footer-only extraction từ trang JS-nặng (gov portal) → junk
+    assert _is_junk_payload(SourcePayload(text="↑\nĐã kết nối EMC\nTrực thuộc BTTTT", meta={"format": "html"}))
+    # nội dung quá ngắn cho một bài viết → junk
+    assert _is_junk_payload(SourcePayload(text="Vài chữ ngắn ngủi.", meta={"format": "html"}))
+    # nhưng search/rss gộp nhiều kết quả ngắn thì KHÔNG bị phạt độ dài
+    assert not _is_junk_payload(SourcePayload(text="Tiêu đề ngắn", meta={"query": "x"}))
+    assert not _is_junk_payload(SourcePayload(text="RSS ngắn", meta={"format": "rss"}))
+
+
 def test_run_source_unchanged_hash_skips_second_insert(tmp_path: Path) -> None:
     db = tmp_path / "q.db"
     storage = Storage(db)
@@ -348,7 +360,10 @@ def test_run_source_unchanged_hash_skips_second_insert(tmp_path: Path) -> None:
         extract="raw",
         url="https://example.com",
     )
-    payload = SourcePayload(text="same", meta={}, etag=None, last_modified=None)
+    payload = SourcePayload(
+        text="Nội dung giống nhau, đủ dài để vượt ngưỡng tối thiểu và không bị coi là rác.",
+        meta={}, etag=None, last_modified=None,
+    )
     with patch("src.pipeline.collect_payload", return_value=payload):
         r1 = run_source(source, storage, settings, None)
     assert r1.changed is True

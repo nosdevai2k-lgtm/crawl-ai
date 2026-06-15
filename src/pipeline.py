@@ -77,8 +77,13 @@ _BLOCKWALL_MARKERS = (
     "nội dung không tồn tại",
     "không tìm thấy đường dẫn",
     "trang không tồn tại",
+    # boilerplate-only extraction (JS-heavy gov portals that yield just a footer)
+    "đã kết nối emc",
+    "trực thuộc btttt",
 )
 _BLOCKWALL_MAX_CHARS = 1500
+# Bài viết thật luôn dài hơn mức này; ngắn hơn = trích xuất hỏng / chỉ còn footer.
+_MIN_USEFUL_CHARS = 64
 
 
 def _looks_like_blockwall(text: str) -> bool:
@@ -98,6 +103,13 @@ def _is_junk_payload(payload: SourcePayload) -> bool:
         return True
     t = (payload.text or "").strip()
     if not t or t.startswith(_JUNK_PREFIXES):
+        return True
+    # too short to be a real article (failed extraction / boilerplate-only).
+    # Only applies to article-like fetches; search/feed/youtube/structured
+    # payloads can legitimately be short, so they are exempt.
+    fmt = payload.meta.get("format")
+    short_ok = "query" in payload.meta or fmt in ("rss", "youtube", "csv", "json")
+    if not short_ok and len(t) < _MIN_USEFUL_CHARS:
         return True
     return _looks_like_blockwall(t)
 

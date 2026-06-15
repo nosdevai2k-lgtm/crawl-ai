@@ -232,7 +232,9 @@ class TestDocxExtract:
 
     def test_run_source_docx_unchanged_hash_skips(self, settings, tmp_path):
         """Chạy lần 2 cùng file → skip (unchanged hash)."""
-        docx_bytes = _make_docx_bytes(["Same content"])
+        docx_bytes = _make_docx_bytes(
+            ["Nội dung tài liệu Word giống nhau, đủ dài để vượt ngưỡng tối thiểu khi kiểm thử."]
+        )
         docx_path = tmp_path / "same.docx"
         docx_path.write_bytes(docx_bytes)
 
