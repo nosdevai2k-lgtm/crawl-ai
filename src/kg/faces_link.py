@@ -100,3 +100,51 @@ def link_faces_to_persons(
         linked += 1
 
     return {"linked": linked, "created": created, "folders": folders}
+
+
+def person_events(kg: KGStorage, person_id: str, limit: int = 30) -> list[dict[str, Any]]:
+    """Events/festivals a person is linked to (ATTENDED) or co-mentioned with."""
+    with kg._connect() as conn:  # noqa: SLF001
+        rows = conn.execute(
+            """
+            SELECT n.id, n.name, n.label, e.rel_type
+            FROM kg_edges e JOIN kg_nodes n ON n.id = e.dst_id
+            WHERE e.src_id = ? AND n.label IN ('Event','Festival')
+            ORDER BY e.weight DESC LIMIT ?
+            """,
+            (person_id, limit),
+        ).fetchall()
+    return [{"id": r["id"], "name": r["name"], "label": r["label"], "via": r["rel_type"]} for r in rows]
+
+
+def match_face_to_events(
+    db_path: Path,
+    image_bytes: bytes,
+    images_root: Path | None = None,
+    *,
+    min_score: float = 0.363,
+) -> dict[str, Any]:
+    """Identify the face in an image and return the related events from the KG.
+
+    Returns {available, match:{slug,name,score}|None, person_id, events:[...]}.
+    `available` is False if face recognition (opencv + models) is not installed."""
+    from .. import faces
+
+    if not faces.available():
+        return {"available": False, "match": None, "person_id": None, "events": []}
+
+    refs = faces.build_references(images_root)
+    match = faces.identify(image_bytes, refs, min_score=min_score)
+    if not match:
+        return {"available": True, "match": None, "person_id": None, "events": []}
+
+    kg = KGStorage(db_path)
+    seed_builtin_aliases(kg)
+    # resolve identified person -> KG Person node (same path as link_faces)
+    slug = match["slug"]
+    cand = slug.replace("-", " ").replace("_", " ").strip()
+    _, _, nid = resolve_name(kg, cand, labels=["Person"])
+    if not nid:
+        nid = node_id("Person", _primary_name(match["name"]))
+    events = person_events(kg, nid) if nid else []
+    return {"available": True, "match": match, "person_id": nid, "events": events}

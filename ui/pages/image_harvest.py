@@ -13,7 +13,9 @@ def render_image_harvest_section(ctx: UIContext) -> None:
     settings = ctx.settings
 
     st.subheader("Thu thập ảnh")
-    tab_landmark, tab_face = st.tabs(["📍 Địa danh / phong cảnh", "👤 Khuôn mặt / nhân vật"])
+    tab_landmark, tab_face, tab_id = st.tabs(
+        ["📍 Địa danh / phong cảnh", "👤 Khuôn mặt / nhân vật", "🔍 Nhận diện mặt → sự kiện"]
+    )
 
     with tab_landmark:
         st.caption("Image-search đa truy vấn → tải ảnh phong cảnh/địa danh → lọc trùng.")
@@ -61,6 +63,13 @@ def render_image_harvest_section(ctx: UIContext) -> None:
             face_en = st.text_input("Tên tiếng Anh", placeholder="VD: To Lam", key="face_en")
         with fc3:
             face_target = st.number_input("Số ảnh", min_value=20, max_value=300, value=120, step=20, key="face_target")
+        from src import faces as _faces
+        face_verify = st.checkbox(
+            "Kiểm tra khuôn mặt sau khi tải (bỏ ảnh không có mặt / sai người)",
+            value=_faces.available(), disabled=not _faces.available(),
+            help=None if _faces.available() else "Cần opencv-python-headless + model trong data/models/",
+            key="face_verify",
+        )
         if st.button("👤 Thu thập khuôn mặt", type="primary", key="face_btn", disabled=not (face_name or "").strip()):
             from src.face_harvest import default_face_out_dir, harvest_faces
             from src.search import build_index
@@ -76,8 +85,12 @@ def render_image_harvest_section(ctx: UIContext) -> None:
                         en_name=(face_en or "").strip() or None,
                         target=int(face_target),
                     )
+                    vmsg = ""
+                    if face_verify and _faces.available():
+                        r = _faces.clean_folder(out, move_rejects=True)
+                        vmsg = f" · verify: giữ {r['kept']}, bỏ {len(r['rejected'])}"
                     build_index()
-                st.success(f"Lưu **{stats['saved']}** ảnh → `{out}` · index rebuilt")
+                st.success(f"Lưu **{stats['saved']}** ảnh → `{out}` · index rebuilt{vmsg}")
                 st.caption(
                     f"urls={stats['urls']} · lọc title={stats['off_topic']} · trùng={stats['dup']}"
                 )
@@ -86,3 +99,33 @@ def render_image_harvest_section(ctx: UIContext) -> None:
                     st.image(imgs, width=120)
             except Exception as exc:  # noqa: BLE001
                 st.error(str(exc))
+
+    with tab_id:
+        st.caption("Tải lên một ảnh → nhận diện nhân vật (theo ảnh đã thu thập) → "
+                   "sự kiện liên quan trong KG.")
+        from src import faces as _faces2
+
+        if not _faces2.available():
+            st.info("Face recognition chưa sẵn sàng. Cài `opencv-python-headless` và đặt "
+                    "model YuNet + SFace vào `data/models/`.")
+        else:
+            up = st.file_uploader("Ảnh khuôn mặt", type=["jpg", "jpeg", "png", "webp"], key="id_up")
+            if up is not None:
+                from src.kg.faces_link import match_face_to_events
+
+                img_bytes = up.read()
+                st.image(img_bytes, width=180)
+                with st.spinner("Đang nhận diện…"):
+                    res = match_face_to_events(settings.database_path, img_bytes, Path("data/images"))
+                if not res["match"]:
+                    st.warning("Không khớp nhân vật nào đã thu thập. Thử thu thập khuôn mặt người này trước.")
+                else:
+                    m = res["match"]
+                    st.success(f"**{m['name']}** · độ khớp {m['score']}")
+                    if res["events"]:
+                        st.markdown("**Sự kiện liên quan:**")
+                        for ev in res["events"]:
+                            st.markdown(f"- {ev['name']} · _{ev['label']}_ ({ev['via']})")
+                    else:
+                        st.caption("Chưa có sự kiện liên kết trong KG. Bấm **Rebuild KG** ở tab Search "
+                                   "để tạo cạnh Person→Event từ tài liệu đã crawl.")

@@ -24,6 +24,7 @@ data/apikey.txt
 data/*.db
 data/*.parquet
 data/test*
+data/models/
 logs/
 *.log
 

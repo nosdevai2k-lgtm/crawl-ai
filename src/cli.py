@@ -229,6 +229,7 @@ def harvest_faces_cmd(
     out_dir: Optional[Path] = typer.Option(None, "--out", "-o", help="Thư mục lưu (mặc định data/images/human/<slug>)"),
     en_name: Optional[str] = typer.Option(None, "--en", help="Tên tiếng Anh"),
     target: int = typer.Option(120, "--target", "-n", help="Số ảnh mục tiêu"),
+    verify: bool = typer.Option(False, "--verify", help="Kiểm tra khuôn mặt: bỏ ảnh không có mặt / sai người"),
 ) -> None:
     """Thu thập ảnh khuôn mặt/chân dung vào data/images/human/<slug> để search nhân vật."""
     from .face_harvest import default_face_out_dir, harvest_faces
@@ -246,11 +247,71 @@ def harvest_faces_cmd(
         en_name=en_name,
         target=target,
     )
+    verify_msg = ""
+    if verify:
+        from . import faces
+
+        if faces.available():
+            res = faces.clean_folder(out, move_rejects=True)
+            verify_msg = f" · verify: giữ {res['kept']}, bỏ {len(res['rejected'])} (không-mặt/sai-người)"
+        else:
+            verify_msg = " · (bỏ qua verify: thiếu opencv/model)"
     build_index()
     typer.echo(
         f"Xong: lưu {stats['saved']} ảnh · index rebuilt (urls={stats['urls']}, "
-        f"lọc={stats['off_topic']}, trùng={stats['dup']})"
+        f"lọc={stats['off_topic']}, trùng={stats['dup']}){verify_msg}"
     )
+
+
+@app.command("identify-face")
+def identify_face_cmd(
+    image: Path = typer.Argument(..., help="Ảnh cần nhận diện"),
+    images_root: Optional[Path] = typer.Option(None, "--images"),
+) -> None:
+    """Nhận diện khuôn mặt trong ảnh và liệt kê sự kiện liên quan (qua KG)."""
+    from .kg.faces_link import match_face_to_events
+    from .settings import load_settings
+
+    settings = load_settings()
+    res = match_face_to_events(
+        settings.database_path, image.read_bytes(),
+        images_root or Path("data/images"),
+    )
+    if not res["available"]:
+        typer.echo("Face recognition chưa sẵn sàng (thiếu opencv hoặc model). "
+                   "Cài: pip install opencv-python-headless và tải model vào data/models/.")
+        raise typer.Exit(code=1)
+    if not res["match"]:
+        typer.echo("Không nhận ra khuôn mặt nào khớp với nhân vật đã thu thập.")
+        return
+    m = res["match"]
+    typer.echo(f"Nhận diện: {m['name']} (score {m['score']})")
+    if res["events"]:
+        typer.echo("Sự kiện liên quan:")
+        for ev in res["events"]:
+            typer.echo(f"  · {ev['name']} [{ev['label']}] ({ev['via']})")
+    else:
+        typer.echo("(chưa có sự kiện liên kết trong KG cho nhân vật này)")
+
+
+@app.command("clean-faces")
+def clean_faces_cmd(
+    slug: Optional[str] = typer.Option(None, "--slug", help="Chỉ làm 1 thư mục human/<slug>"),
+    images_root: Optional[Path] = typer.Option(None, "--images"),
+    apply: bool = typer.Option(False, "--apply", help="Di chuyển ảnh sai vào _rejected/ (mặc định chỉ báo cáo)"),
+) -> None:
+    """Kiểm tra thư mục khuôn mặt: bỏ ảnh không có mặt / sai người (theo embedding)."""
+    from . import faces
+
+    if not faces.available():
+        typer.echo("Thiếu opencv hoặc model — không thể kiểm tra.")
+        raise typer.Exit(code=1)
+    root = images_root or Path("data/images")
+    human = root / "human"
+    folders = [human / slug] if slug else sorted(p for p in human.iterdir() if p.is_dir() and p.name != "_rejected")
+    for folder in folders:
+        res = faces.clean_folder(folder, move_rejects=apply)
+        typer.echo(f"{folder.name}: total={res['total']} kept={res['kept']} rejected={len(res['rejected'])}")
 
 
 @app.command("link-faces")

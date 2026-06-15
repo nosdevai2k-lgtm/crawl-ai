@@ -115,6 +115,31 @@ Lưu trữ documents: **SQLite** mặc định (`data/crawl.db`, tạo thư mụ
 
 Khi nội dung **không đổi**, pipeline **bỏ qua** ghi (hash / 304) — đó là dấu hiệu cơ chế cập nhật đang hoạt động.
 
+## Nhận diện khuôn mặt & match sự kiện
+
+Nhận diện khuôn mặt dùng **OpenCV** (YuNet detect + SFace embedding) — không cần biên dịch.
+
+```powershell
+pip install opencv-python-headless
+python scripts/download_face_models.py   # tải model vào data/models/ (~37MB)
+```
+
+- **Thu thập + kiểm tra mặt**: `python -m src.cli harvest-faces "Tô Lâm" --en "To Lam" --verify`
+  (`--verify` bỏ ảnh không có mặt / sai người theo embedding).
+- **Dọn thư mục mặt đã có**: `python -m src.cli clean-faces` (thêm `--apply` để chuyển ảnh sai vào `_rejected/`).
+- **Nối mặt với KG**: `python -m src.cli link-faces` → cạnh `Person --HAS_FACE--> FaceSet`.
+- **Nhận diện → sự kiện**: `python -m src.cli identify-face ảnh.jpg` hoặc tab **🔍 Nhận diện mặt → sự kiện** trên UI.
+  Cạnh `Person --ATTENDED--> Event` được tạo khi index tài liệu; bấm **Rebuild KG** để cập nhật dữ liệu cũ.
+
+Nếu thiếu opencv/model, các tính năng mặt **tự tắt** (degrade gracefully), phần còn lại vẫn chạy.
+
+## Ưu tiên nguồn chuẩn
+
+`src/source_trust.py` xếp hạng domain theo độ tin cậy (official `.gov.vn`/chinhphu.vn → press báo lớn →
+reference → neutral → low → blocked). Kết quả tìm kiếm DuckDuckGo được **xếp lại theo trust** và bỏ
+domain spam; `run-once --all` / batch chạy **nguồn ưu tiên cao trước**. Đặt `priority: <int>` cho từng
+source trong `config.yaml` để ghi đè.
+
 ## Giới hạn
 
 - Trang cần JavaScript nặng: dùng `type: browser` (Playwright headless Chromium) — đã hỗ trợ.
